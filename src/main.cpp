@@ -16,6 +16,7 @@
 /*****************************************************************************/
 #include <iostream>
 #include <fstream>
+#include "simulator.h"
 
 using namespace std;
 
@@ -31,7 +32,49 @@ int main( int argc, char** argv )
         return -1;
     }
 
-    /* SIMULATE... THAT... CACHE!!!! */
+    /* Ensure the configuration is correct here */
+    fstream config( argv[1], fstream::in );
+
+    int configs[6];
+    for( int i = 0; i < 6; ++i )
+    {
+        config>> configs[i];
+
+        if( i <= 2 && (configs[i] < 0 || !isPowOf2( configs[i] )) )
+        {
+            cout<< "Invalid configuration. Line " << i+1
+                << " should be a non-negative power of 2.\n";
+            return -2;
+        }
+        if( i == 3 && configs[i] != 0 && configs[i] != 1 )
+        {
+            cout<< "Invalid configuration. Line " << i+1 
+                << " should be 0 (for random) or 1 (for FIFO).\n";
+            return -2;
+        }
+        if( i == 4 && configs[i] < 0 )
+        {
+            cout<< "Invalid configuration. Line " << i+1
+                << " should be a positive integer.\n";
+            return -2;
+        }
+        if( i == 5 && configs[i] != 0 && configs[i] != 1 )
+        {
+            cout<< "Invalid configuration. Line " << i+1
+                << " should be 0 (for no-write-allocate) "
+                << "or 1 (for write-allocate).\n";
+            return -2;
+        }
+    }
+
+    config.close();
+
+    /* Construct the simulator */
+    Simulator s( configs[0], configs[1], configs[2], configs[3]
+               , configs[4], configs[5], string( argv[2] ) );
+
+    /* SIMULATE... THAT... CACHE!!!! (trace given by argv[2]) */
+    s.simulate();
 
     return 0;
 }
