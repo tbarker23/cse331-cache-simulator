@@ -96,6 +96,11 @@ class Simulator
         outputFileStream.open(outputFile.c_str(), std::fstream::out);
     }
 
+    ~Simulator()
+    {
+        outputFileStream.close();
+    }
+
     /* function to simulate contents of file */
     void simulate()
     {
