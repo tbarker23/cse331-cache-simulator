@@ -46,10 +46,9 @@ class Simulator
         this->outputFile = fname + ".out";
         outputFileStream.open(outputFile.c_str(), std::fstream::out);
     }
-        
 
-    /* getters and setter insert here */
     /* function to simulate contents of file */
-    
-
+    void simulate()
+    {
+    }
 };
