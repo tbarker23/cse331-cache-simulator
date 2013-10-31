@@ -18,6 +18,7 @@
 #include<iostream>
 #include<fstream>
 #include<math.h>
+#include<vector>
 
 class Cache
 {
@@ -39,6 +40,8 @@ class Cache
         int offsetBits;
         int setBits;
         int tagBits;
+        std::vector< std::vector< int > > cache;
+        
 
     public:
         Cache( int linesize, int assoc, int datasize, int replacement )
@@ -59,6 +62,9 @@ class Cache
             }
             this->tagBits = 32 - setBits - offsetBits;
         }
+
+        void replace( /* not sure what args are needed... */ );
+        void load( unsigned int address );
 };
 
 class Simulator 
