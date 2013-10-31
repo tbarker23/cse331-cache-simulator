@@ -15,9 +15,10 @@
 /   due:        Nov 11, 2013
 /
 /*****************************************************************************/
+#include<iostream>
+#include<fstream>
 
-
-class simulator 
+class Simulator 
 {
     protected:
         int lineSize;
@@ -26,8 +27,27 @@ class simulator
         int replacePolicy;
         int missPenalty;
         int writeAllocate;
+        std::string traceFile;
+        std::string outputFile;
+        std::fstream outputFileStream; 
     public:
     /* CTOR */
+    Simulator(int lsize, int asctvty, int dsize, 
+              int rpol, int mpenal, int walloc, std::string fname
+              )
+    {
+        this->lineSize = lsize;
+        this->associativity = asctvty;
+        this->dataSize = dsize;
+        this->replacePolicy = rpol;
+        this->missPenalty = mpenal;
+        this->writeAllocate = walloc;
+        this->traceFile = fname;
+        this->outputFile = fname + ".out";
+        outputFileStream.open(outputFile.c_str(), std::fstream::out);
+    }
+        
+
     /* getters and setter insert here */
     /* function to simulate contents of file */
     
