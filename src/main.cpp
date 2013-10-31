@@ -40,7 +40,7 @@ int main( int argc, char** argv )
     {
         config>> configs[i];
 
-        if( i <= 2 && (!isPowOf2( configs[i] ) || configs[i] < 0) )
+        if( i <= 2 && (configs[i] < 0 || !isPowOf2( configs[i] )) )
         {
             cout<< "Invalid configuration. Line " << i+1
                 << " should be a non-negative power of 2.\n";
@@ -70,8 +70,11 @@ int main( int argc, char** argv )
     config.close();
 
     /* Construct the simulator */
+    Simulator s( configs[0], configs[1], configs[2], configs[3]
+               , configs[4], configs[5], string( argv[2] ) );
 
     /* SIMULATE... THAT... CACHE!!!! (trace given by argv[2]) */
+    s.simulate();
 
     return 0;
 }
