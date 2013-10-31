@@ -1,5 +1,5 @@
 all:
-	g++ main.cpp -o cachesim
+	g++ main.cpp -o cachesim -lm
 
 clean:
 	rm cachesim

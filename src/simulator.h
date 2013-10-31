@@ -17,6 +17,49 @@
 /*****************************************************************************/
 #include<iostream>
 #include<fstream>
+#include<math.h>
+
+class Cache
+{
+    /* Frames = lineSize / dataSize;
+     * For an address;
+     *     offsetBits = log_2(lineSize)
+     *     setBits    = log_2(frames) / associativity (if assoc > 0 )
+     *     tagBits    = 32 - offsetBits - setBits
+     *
+     * Visually:
+     *     | tag            | set     |   offset |
+     */
+    protected:
+        int lineSize;
+        int associativity;
+        int dataSize;
+        int replacePolicy;
+        int frames;
+        int offsetBits;
+        int setBits;
+        int tagBits;
+
+    public:
+        Cache( int linesize, int assoc, int datasize, int replacement )
+        {
+            this->lineSize = linesize;
+            this->associativity = assoc;
+            this->dataSize = datasize;
+            this->replacePolicy = replacement;
+
+            this->frames = this->lineSize / this->dataSize;
+            this->offsetBits = log2( this->lineSize );
+            if( this->associativity > 0 )
+            {
+                this->setBits = log2( this->frames ) / this->associativity;
+            } else
+            {
+                this->setBits = log2( this->frames );
+            }
+            this->tagBits = 32 - setBits - offsetBits;
+        }
+};
 
 class Simulator 
 {
