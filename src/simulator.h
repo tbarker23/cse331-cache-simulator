@@ -78,7 +78,8 @@ class Simulator
         int writeAllocate;
         std::string traceFile;
         std::string outputFile;
-        std::fstream outputFileStream; 
+        std::fstream outputFileStream;
+        Cache cache2Simulate; 
     public:
     /* CTOR */
     Simulator(int lsize, int asctvty, int dsize, 
@@ -94,6 +95,9 @@ class Simulator
         this->traceFile = fname;
         this->outputFile = fname + ".out";
         outputFileStream.open(outputFile.c_str(), std::fstream::out);
+        this->cache2Simulate = Cache(this->lineSize, this->associativity, 
+                                     this->dataSize, this->replacePolicy
+                                     );
     }
 
     ~Simulator()
