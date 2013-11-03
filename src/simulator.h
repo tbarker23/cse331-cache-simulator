@@ -40,6 +40,8 @@ class Cache
         int offsetBits;
         int setBits;
         int tagBits;
+        int numBlocks;
+        int numSets;
         std::vector< std::vector< int > > cache;
         
 
@@ -61,8 +63,25 @@ class Cache
                 this->setBits = log2( this->frames );
             }
             this->tagBits = 32 - setBits - offsetBits;
+            
+            this->numBlocks = this->dataSize / this->lineSize;
+            this->numSets = this->dataSize / 
+                            (this->associativity * this->lineSize);
         }
 
+        /* Empty and clear out the values in the cache */
+        void emptyCache()
+        {
+            for( int i = 0; i < this->numSets; ++i )
+            {
+                for( int j = 0; j < this->associativity; ++j)
+                {
+                    cache[i][j] = 0;
+                }
+            }
+        }
+
+        }
         void replace( /* not sure what args are needed... */ );
         void load( unsigned int address );
 };
