@@ -46,6 +46,9 @@ class Cache
         
 
     public:
+        Cache()
+        {
+        }
         Cache( int linesize, int assoc, int datasize, int replacement )
         {
             this->lineSize = linesize;
@@ -65,8 +68,7 @@ class Cache
             this->tagBits = 32 - setBits - offsetBits;
             
             this->numBlocks = this->dataSize / this->lineSize;
-            this->numSets = this->dataSize / 
-                            (this->associativity * this->lineSize);
+            this->numSets = this->dataSize /(this->associativity * this->lineSize);
         }
 
         /* Empty and clear out the values in the cache */
@@ -79,8 +81,6 @@ class Cache
                     cache[i][j] = 0;
                 }
             }
-        }
-
         }
         void replace( /* not sure what args are needed... */ );
         void load( unsigned int address );
