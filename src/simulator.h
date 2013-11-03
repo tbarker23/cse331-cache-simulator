@@ -98,7 +98,16 @@ class Simulator
         std::string traceFile;
         std::string outputFile;
         std::fstream outputFileStream;
-        Cache cache2Simulate; 
+        std::fstream inputFileStream;
+        Cache cache2Simulate;
+        struct line
+        {
+           std::string accessType;
+           int address;
+           int numInstnsLastMem;
+        } line2Simulate;
+       
+             
     public:
     /* CTOR */
     Simulator(int lsize, int asctvty, int dsize, 
@@ -114,6 +123,7 @@ class Simulator
         this->traceFile = fname;
         this->outputFile = fname + ".out";
         outputFileStream.open(outputFile.c_str(), std::fstream::out);
+        inputFileStream.open(traceFile.c_str(), std::fstream::out);
         this->cache2Simulate = Cache(this->lineSize, this->associativity, 
                                      this->dataSize, this->replacePolicy
                                      );
@@ -122,6 +132,14 @@ class Simulator
     ~Simulator()
     {
         outputFileStream.close();
+        inputFileStream.close();
+    }
+
+    /* Read in trace file data */
+    void readInTrace()
+    {
+       inputFileStream >> line2Simulate.accessType >> 
+                        line2Simulate.address >> line2Simulate.numInstnsLastMem;
     }
 
     /* function to simulate contents of file */
