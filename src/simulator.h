@@ -115,7 +115,9 @@ class Cache
 		}
 	    }
         }
-        void load( unsigned int address );
+        void load( unsigned int address )
+	{
+	}
 };
 
 class Simulator 
@@ -155,7 +157,7 @@ class Simulator
         this->traceFile = fname;
         this->outputFile = fname + ".out";
         outputFileStream.open(outputFile.c_str(), std::fstream::out);
-        inputFileStream.open(traceFile.c_str(), std::fstream::out);
+        inputFileStream.open(traceFile.c_str(), std::fstream::in);
         this->cache2Simulate = Cache(this->lineSize, this->associativity, 
                                      this->dataSize, this->replacePolicy
                                      );
@@ -170,12 +172,62 @@ class Simulator
     /* Read in trace file data */
     void readInTrace()
     {
-       inputFileStream >> line2Simulate.accessType >> 
-                        line2Simulate.address >> line2Simulate.numInstnsLastMem;
+       inputFileStream >> line2Simulate.accessType 
+		       >> std::hex >> line2Simulate.address 
+		       >> line2Simulate.numInstnsLastMem;
     }
 
     /* function to simulate contents of file */
     void simulate()
     {
+        int cycles = 0;
+        int hits = 0;
+        int accesses = 0;
+        int loadHits = 0;
+        int loads = 0;
+	int storeHits = 0;
+	int stores = 0;
+	int mal = 0;
+
+        while( !inputFileStream.eof() )
+	{
+	    readInTrace();
+            accesses++;
+
+            if( line2Simulate.accessType == "s" )
+	    {
+		cycles += writeCost( line2Simulate.address );
+		loads++;
+	    } else if( line2Simulate.accessType == "l" )
+	    {
+		cycles += loadCost( line2Simulate.address );
+		stores++;
+	    }
+
+	    cycles += line2Simulate.numInstnsLastMem;
+
+            /* Zero out the simulated line to prevent an 
+	     * error that would otherwise occur in the output
+	     */
+	    line2Simulate.accessType = "";
+	    line2Simulate.address = 0;
+	    line2Simulate.numInstnsLastMem = 0;
+	}
+
+	outputFileStream << hits/accesses << std::endl
+			 << loadHits/loads << std::endl
+			 << storeHits/stores << std::endl
+			 << cycles << std::endl
+			 << mal << std::endl;
+    }
+
+    int loadCost( int address )
+    {
+        return 1;
+    }
+
+    int writeCost( int address )
+    {
+	return 1;
     }
 };
