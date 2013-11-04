@@ -20,6 +20,17 @@
 #include<math.h>
 #include<vector>
 
+struct CacheLine
+{
+    char flags; // This contains the valid/dirty bits.
+    int  block; // This contains the actual block.
+};
+
+struct CacheSet
+{
+    vector< CaceLine > blocks; // The blocks in this set
+};
+
 class Cache
 {
     /* Frames = lineSize / dataSize;
@@ -42,7 +53,7 @@ class Cache
         int tagBits;
         int numBlocks;
         int numSets;
-        std::vector< std::vector< int > > cache;
+        std::vector< CacheSet > cache;
         
 
     public:
