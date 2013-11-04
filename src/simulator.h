@@ -82,7 +82,6 @@ class Cache
                 }
             }
         }
-        void replace( /* not sure what args are needed... */ );
         void load( unsigned int address );
 };
 
