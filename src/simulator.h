@@ -22,13 +22,14 @@
 
 struct CacheLine
 {
+    int tag;    // The tag of this block
     char flags; // This contains the valid/dirty bits.
     int  block; // This contains the actual block.
 };
 
 struct CacheSet
 {
-    vector< CaceLine > blocks; // The blocks in this set
+    std::vector< CacheLine > blocks; // The blocks in this set
 };
 
 class Cache
@@ -80,18 +81,39 @@ class Cache
             
             this->numBlocks = this->dataSize / this->lineSize;
             this->numSets = this->dataSize /(this->associativity * this->lineSize);
+
+            // Build the cache
+	    int blocksPerSet = numBlocks / numSets;
+            this->cache.resize( numSets );
+            for( int i = 0; i < numSets; ++i )
+	    {
+		CacheSet* cs = new CacheSet();
+		cs->blocks.resize( blocksPerSet );
+		for( int j = 0; j < blocksPerSet; ++j )
+		{
+		    CacheLine* cl = new CacheLine();
+                    cl->tag = 0;
+		    cl->flags = 0;
+		    cl->block = 0;
+		    cs->blocks[j] = *cl;
+		}
+		this->cache[i] = *cs;
+	    }
         }
 
         /* Empty and clear out the values in the cache */
         void emptyCache()
         {
-            for( int i = 0; i < this->numSets; ++i )
-            {
-                for( int j = 0; j < this->associativity; ++j)
-                {
-                    cache[i][j] = 0;
-                }
-            }
+	    int blocksPerSet = this->numBlocks/this->numSets;
+	    for( int i = 0; i < this->numSets; ++i )
+	    {
+		for( int j = 0; j < blocksPerSet; ++j )
+		{
+		    this->cache[i].blocks[j].tag = 0;
+		    this->cache[i].blocks[j].flags = 0;
+		    this->cache[i].blocks[j].block = 0;
+		}
+	    }
         }
         void load( unsigned int address );
 };
