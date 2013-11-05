@@ -145,7 +145,6 @@ class Simulator
         {
            int tag;
            int set;
-           int offset;
         } lineAddress; 
              
     public:
@@ -184,6 +183,7 @@ class Simulator
 		       >> line2Simulate.numInstnsLastMem;
     }
 
+    /* Will split a 32 bit int into the correct fields */
     void splitAddress( int addr )
     {
         lineAddress.set = addr % numSets;
