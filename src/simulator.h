@@ -86,38 +86,38 @@ class Cache
 	    int blocksPerSet = numBlocks / numSets;
             this->cache.resize( numSets );
             for( int i = 0; i < numSets; ++i )
-	    {
-		CacheSet* cs = new CacheSet();
-		cs->blocks.resize( blocksPerSet );
-		for( int j = 0; j < blocksPerSet; ++j )
-		{
-		    CacheLine* cl = new CacheLine();
+            {
+                CacheSet* cs = new CacheSet();
+                cs->blocks.resize( blocksPerSet );
+                for( int j = 0; j < blocksPerSet; ++j )
+                {
+                    CacheLine* cl = new CacheLine();
                     cl->tag = 0;
-		    cl->flags = 0;
-		    cl->block = 0;
-		    cs->blocks[j] = *cl;
-		}
-		this->cache[i] = *cs;
-	    }
+                    cl->flags = 0;
+                    cl->block = 0;
+                    cs->blocks[j] = *cl;
+                }
+                this->cache[i] = *cs;
+	        }
         }
 
         /* Empty and clear out the values in the cache */
         void emptyCache()
         {
-	    int blocksPerSet = this->numBlocks/this->numSets;
-	    for( int i = 0; i < this->numSets; ++i )
-	    {
-		for( int j = 0; j < blocksPerSet; ++j )
-		{
-		    this->cache[i].blocks[j].tag = 0;
-		    this->cache[i].blocks[j].flags = 0;
-		    this->cache[i].blocks[j].block = 0;
-		}
-	    }
+            int blocksPerSet = this->numBlocks/this->numSets;
+            for( int i = 0; i < this->numSets; ++i )
+            {
+                for( int j = 0; j < blocksPerSet; ++j )
+                {
+                    this->cache[i].blocks[j].tag = 0;
+                    this->cache[i].blocks[j].flags = 0;
+                    this->cache[i].blocks[j].block = 0;
+                }
+            }
         }
         void load( unsigned int address )
-	{
-	}
+        {
+        }
 };
 
 class Simulator 
@@ -129,6 +129,7 @@ class Simulator
         int replacePolicy;
         int missPenalty;
         int writeAllocate;
+        int numSets;
         std::string traceFile;
         std::string outputFile;
         std::fstream outputFileStream;
@@ -140,7 +141,12 @@ class Simulator
            int address;
            int numInstnsLastMem;
         } line2Simulate;
-       
+        struct addr
+        {
+           int tag;
+           int set;
+           int offset;
+        } lineAddress; 
              
     public:
     /* CTOR */
@@ -158,6 +164,7 @@ class Simulator
         this->outputFile = fname + ".out";
         outputFileStream.open(outputFile.c_str(), std::fstream::out);
         inputFileStream.open(traceFile.c_str(), std::fstream::in);
+        this->numSets = this->dataSize /(this->associativity * this->lineSize);
         this->cache2Simulate = Cache(this->lineSize, this->associativity, 
                                      this->dataSize, this->replacePolicy
                                      );
@@ -177,6 +184,13 @@ class Simulator
 		       >> line2Simulate.numInstnsLastMem;
     }
 
+    void splitAddress( int addr )
+    {
+        lineAddress.set = addr % numSets;
+        lineAddress.tag = addr / numSets;
+    }
+        
+
     /* function to simulate contents of file */
     void simulate()
     {
@@ -185,34 +199,34 @@ class Simulator
         int accesses = 0;
         int loadHits = 0;
         int loads = 0;
-	int storeHits = 0;
-	int stores = 0;
-	int mal = 0;
+        int storeHits = 0;
+        int stores = 0;
+        int mal = 0;
 
         while( !inputFileStream.eof() )
-	{
-	    readInTrace();
+	    {
+	        readInTrace();
             accesses++;
 
             if( line2Simulate.accessType == "s" )
-	    {
-		cycles += writeCost( line2Simulate.address );
-		loads++;
-	    } else if( line2Simulate.accessType == "l" )
-	    {
-		cycles += loadCost( line2Simulate.address );
-		stores++;
-	    }
+	        {
+		        cycles += writeCost( line2Simulate.address );
+		        loads++;
+	        } else if( line2Simulate.accessType == "l" )
+	        {
+		        cycles += loadCost( line2Simulate.address );
+		        stores++;
+	        }
 
-	    cycles += line2Simulate.numInstnsLastMem;
+	        cycles += line2Simulate.numInstnsLastMem;
 
             /* Zero out the simulated line to prevent an 
-	     * error that would otherwise occur in the output
-	     */
-	    line2Simulate.accessType = "";
-	    line2Simulate.address = 0;
-	    line2Simulate.numInstnsLastMem = 0;
-	}
+	        * error that would otherwise occur in the output
+	        */
+            line2Simulate.accessType = "";
+            line2Simulate.address = 0;
+            line2Simulate.numInstnsLastMem = 0;
+    	}
 
 	outputFileStream << hits/accesses << std::endl
 			 << loadHits/loads << std::endl
