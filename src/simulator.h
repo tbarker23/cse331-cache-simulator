@@ -18,18 +18,21 @@
 #include<iostream>
 #include<fstream>
 #include<math.h>
+#include<cstdlib> // rand?
 #include<vector>
 
 struct CacheLine
 {
     int tag;    // The tag of this block
-    char flags; // This contains the valid/dirty bits.
+    int age;	// The age of the block
+    char flags; // This contains the valid bit.
     int  block; // This contains the actual block.
 };
 
 struct CacheSet
 {
     std::vector< CacheLine > blocks; // The blocks in this set
+    int nextLineUsed; // The next line to replace during loads
 };
 
 class Cache
@@ -114,6 +117,7 @@ class Cache
             for( int i = 0; i < numSets; ++i )
             {
                 CacheSet* cs = new CacheSet();
+		cs->nextLineUsed = 0;
                 cs->blocks.resize( blocksPerSet );
                 for( int j = 0; j < blocksPerSet; ++j )
                 {
@@ -145,21 +149,39 @@ class Cache
 	/* Loads a memory address into the cache */
         void load( unsigned int address )
         {
-	    /* TODO:
-	     *	We need a way to determine:
-	     *	    1) which line in a set to use
-	     *	    2) which line to replace if they're all full...
-	     */
-
 	    splitAddress( address );
-	    cache[set].blocks[0].tag = lineAddress.tag;
-	    cache[set].blocks[0].flags = 0;
+
+	    // Figure out the line to use
+	    int lineNo = 0;
+	    switch( replacePolicy )
+	    {
+		case 0:
+		default:
+		    lineNo = rand() % associativity;
+		    break;
+		case1:
+		    {
+			// This is FIFO replacement...the way
+			// we implement this implies that the
+			// order of replacement follows 0 <= i < blocks
+			// and wraps around back to 0 again...
+			int blocks = cache[lineAddress.set].blocks.size();
+			lineNo = cache[lineAddress.set].nextLineUsed;
+			cache[lineAddress.set].nextLineUsed = 
+			    (cache[lineAddress.set].nextLineUsed + 1) % blocks;
+		    }
+		    break;
+	    };
+
+	    cache[lineAddress.set].blocks[lineNo].tag = lineAddress.tag;
+	    cache[lineAddress.set].blocks[lineNo].flags |= 0x1;
 
 	    // Is this right? hmmm... the intent is to 
 	    // align the start address in the block to be a
 	    // multiple of linesize, regardless of what offset
 	    // we're loading into the cache...
-	    cache[set].blocks[0].block = offset - (linesize % offset);
+	    cache[lineAddress.set].blocks[lineNo].block = 
+		lineAddress.offset - (lineSize % lineAddress.offset);
         }
 
 	/* Checks if a memory address is already in memory */
