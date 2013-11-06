@@ -99,16 +99,16 @@ class Cache
 	    // Set up the masks
 	    offsetMask = 0;
 	    for( int i = 0; i < offsetBits; ++i )
-		offsetMask = offsetMask * 2 + 1;
+		offsetMask = (offsetMask << 1) + 1;
 
 	    setMask = 0;
 	    for( int i = 0; i < setBits; ++i )
-		setMask = setMask * 2 + 1;
+		setMask = (setMask << 1) + 1;
 	    setMask <<= offsetBits;
 
 	    tagMask = 0;
 	    for( int i = 0; i < tagBits; ++i )
-		tagMask = tagMask * 2 + 1;
+		tagMask = (tagMask << 1) + 1;
 	    tagMask <<= (setBits + offsetBits);
 
             // Build the cache
@@ -181,24 +181,33 @@ class Cache
 	    // multiple of linesize, regardless of what offset
 	    // we're loading into the cache...
 	    cache[lineAddress.set].blocks[lineNo].block = 
-		lineAddress.offset - (lineSize % lineAddress.offset);
+		lineAddress.offset - (lineAddress.offset % lineSize);
         }
 
 	/* Checks if a memory address is already in memory */
 	bool isLoaded( unsigned int address )
 	{
-	    /* Solve load first, then figure out a way to make this
-	     * search the cache for the address provided.
-	     */
+	    bool loaded = false;
+
 	    splitAddress( address );
-	    return true;
+
+	    int set = lineAddress.set;
+	    int blocks = cache[set].blocks.size();
+	    for( int i = 0; i < blocks; ++i )
+	    {
+		if( cache[set].blocks[i].tag == lineAddress.tag )
+		    loaded = true;
+	    }
+
+	    return loaded;
 	}
 
 	/* Will split a 32 bit int into the correct fields */
 	void splitAddress( int addr )
 	{
-	    lineAddress.set = (addr & setMask) >> offsetBits;
-	    lineAddress.tag = (addr & tagMask) >> (offsetBits + setBits);
+	    lineAddress.set = (unsigned int)(addr & setMask) >> offsetBits;
+	    lineAddress.tag = 
+		(unsigned int)(addr & tagMask) >> (offsetBits + setBits);
 	    lineAddress.offset = (addr & offsetMask);
 	}
 };
@@ -279,11 +288,11 @@ class Simulator
 	    readInTrace();
 	    accesses++;
 
-            if( line2Simulate.accessType == "s" )
+            if( line2Simulate.accessType.compare("s") == 0 )
 	    {
 	        cycles += writeCost( line2Simulate.address );
 	        stores++;
-	    } else if( line2Simulate.accessType == "l" )
+	    } else if( line2Simulate.accessType.compare("l") == 0 )
 	    {
 	        cycles += loadCost( line2Simulate.address );
 	        loads++;
@@ -314,6 +323,7 @@ class Simulator
 	} else
 	{
 	    cache2Simulate.load( address );
+
 	    return missPenalty;
 	}
     }
