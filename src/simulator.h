@@ -144,11 +144,13 @@ class Cache
 	/* Loads a memory address into the cache */
         void load( unsigned int address )
         {
+	    splitAddress( address );
         }
 
 	/* Checks if a memory address is already in memory */
 	bool isLoaded( unsigned int address )
 	{
+	    splitAddress( address );
 	    return true;
 	}
 
