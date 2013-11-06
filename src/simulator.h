@@ -54,8 +54,17 @@ class Cache
         int tagBits;
         int numBlocks;
         int numSets;
+	int offsetMask;
+	int setMask;
+	int tagMask;
         std::vector< CacheSet > cache;
         
+
+        struct addr
+        {
+           int tag;
+           int set;
+        } lineAddress; 
 
     public:
         Cache()
@@ -80,7 +89,23 @@ class Cache
             this->tagBits = 32 - setBits - offsetBits;
             
             this->numBlocks = this->dataSize / this->lineSize;
-            this->numSets = this->dataSize /(this->associativity * this->lineSize);
+            this->numSets = 
+		this->dataSize /(this->associativity * this->lineSize);
+
+	    // Set up the masks
+	    offsetMask = 0;
+	    for( int i = 0; i < offsetBits; ++i )
+		offsetMask = offsetMask * 2 + 1;
+
+	    setMask = 0;
+	    for( int i = 0; i < setBits; ++i )
+		setMask = setMask * 2 + 1;
+	    setMask <<= offsetBits;
+
+	    tagMask = 0;
+	    for( int i = 0; i < tagBits; ++i )
+		tagMask = tagMask * 2 + 1;
+	    tagMask <<= (setBits + offsetBits);
 
             // Build the cache
 	    int blocksPerSet = numBlocks / numSets;
@@ -98,7 +123,7 @@ class Cache
                     cs->blocks[j] = *cl;
                 }
                 this->cache[i] = *cs;
-	        }
+	    }
         }
 
         /* Empty and clear out the values in the cache */
@@ -115,9 +140,24 @@ class Cache
                 }
             }
         }
+
+	/* Loads a memory address into the cache */
         void load( unsigned int address )
         {
         }
+
+	/* Checks if a memory address is already in memory */
+	bool isLoaded( unsigned int address )
+	{
+	    return true;
+	}
+
+	/* Will split a 32 bit int into the correct fields */
+	void splitAddress( int addr )
+	{
+	    lineAddress.set = addr & setMask;
+	    lineAddress.tag = addr & tagMask;
+	}
 };
 
 class Simulator 
@@ -138,14 +178,9 @@ class Simulator
         struct line
         {
            std::string accessType;
-           int address;
+           unsigned int address;
            int numInstnsLastMem;
         } line2Simulate;
-        struct addr
-        {
-           int tag;
-           int set;
-        } lineAddress; 
              
     public:
     /* CTOR */
@@ -182,13 +217,6 @@ class Simulator
 		       >> std::hex >> line2Simulate.address 
 		       >> line2Simulate.numInstnsLastMem;
     }
-
-    /* Will split a 32 bit int into the correct fields */
-    void splitAddress( int addr )
-    {
-        lineAddress.set = addr % numSets;
-        lineAddress.tag = addr / numSets;
-    }
         
 
     /* function to simulate contents of file */
@@ -204,25 +232,25 @@ class Simulator
         int mal = 0;
 
         while( !inputFileStream.eof() )
-	    {
-	        readInTrace();
-            accesses++;
+	{
+	    readInTrace();
+	    accesses++;
 
             if( line2Simulate.accessType == "s" )
-	        {
-		        cycles += writeCost( line2Simulate.address );
-		        loads++;
-	        } else if( line2Simulate.accessType == "l" )
-	        {
-		        cycles += loadCost( line2Simulate.address );
-		        stores++;
-	        }
+	    {
+	        cycles += writeCost( line2Simulate.address );
+	        stores++;
+	    } else if( line2Simulate.accessType == "l" )
+	    {
+	        cycles += loadCost( line2Simulate.address );
+	        loads++;
+	    }
 
-	        cycles += line2Simulate.numInstnsLastMem;
+	    cycles += line2Simulate.numInstnsLastMem;
 
             /* Zero out the simulated line to prevent an 
-	        * error that would otherwise occur in the output
-	        */
+	     * error that would otherwise occur in the output
+	     */
             line2Simulate.accessType = "";
             line2Simulate.address = 0;
             line2Simulate.numInstnsLastMem = 0;
@@ -235,12 +263,19 @@ class Simulator
 			 << mal << std::endl;
     }
 
-    int loadCost( int address )
+    int loadCost( unsigned int address )
     {
-        return 1;
+	if( cache2Simulate.isLoaded( address ) )
+	{
+	    return 1;
+	} else
+	{
+	    cache2Simulate.load( address );
+	    return 100;
+	}
     }
 
-    int writeCost( int address )
+    int writeCost( unsigned int address )
     {
 	return 1;
     }
