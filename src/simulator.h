@@ -64,6 +64,7 @@ class Cache
         {
            int tag;
            int set;
+	   int offset;
         } lineAddress; 
 
     public:
@@ -144,12 +145,29 @@ class Cache
 	/* Loads a memory address into the cache */
         void load( unsigned int address )
         {
+	    /* TODO:
+	     *	We need a way to determine:
+	     *	    1) which line in a set to use
+	     *	    2) which line to replace if they're all full...
+	     */
+
 	    splitAddress( address );
+	    cache[set].blocks[0].tag = lineAddress.tag;
+	    cache[set].blocks[0].flags = 0;
+
+	    // Is this right? hmmm... the intent is to 
+	    // align the start address in the block to be a
+	    // multiple of linesize, regardless of what offset
+	    // we're loading into the cache...
+	    cache[set].blocks[0].block = offset - (linesize % offset);
         }
 
 	/* Checks if a memory address is already in memory */
 	bool isLoaded( unsigned int address )
 	{
+	    /* Solve load first, then figure out a way to make this
+	     * search the cache for the address provided.
+	     */
 	    splitAddress( address );
 	    return true;
 	}
@@ -157,8 +175,9 @@ class Cache
 	/* Will split a 32 bit int into the correct fields */
 	void splitAddress( int addr )
 	{
-	    lineAddress.set = addr & setMask;
-	    lineAddress.tag = addr & tagMask;
+	    lineAddress.set = (addr & setMask) >> offsetBits;
+	    lineAddress.tag = (addr & tagMask) >> (offsetBits + setBits);
+	    lineAddress.offset = (addr & offsetMask);
 	}
 };
 
@@ -273,7 +292,7 @@ class Simulator
 	} else
 	{
 	    cache2Simulate.load( address );
-	    return 100;
+	    return missPenalty;
 	}
     }
 
