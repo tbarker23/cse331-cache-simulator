@@ -96,20 +96,6 @@ class Cache
             this->numSets = 
 		this->dataSize /(this->associativity * this->lineSize);
 
-	    std::cout<< "Cache configuration:\n"
-		     << "\tLine Size:\t" << lineSize << std::endl
-		     << "\tCache Size:\t" << dataSize << std::endl
-		     << "\tReplace:\t" << replacePolicy << std::endl
-		     << "\tAssoc:\t\t" << associativity << std::endl
-		     << "\tLines:\t\t" << frames << std::endl
-		     << std::endl;
-
-	    std::cout<< "Address Breakdown:\n"
-		     << "\tTag Bits:\t" << tagBits << std::endl
-		     << "\tSet Bits:\t" << setBits << std::endl
-		     << "\tOffset Bits:\t" << offsetBits << std::endl
-		     << std::endl;
-
 	    // Set up the masks
 	    offsetMask = 0;
 	    for( int i = 0; i < offsetBits; ++i )
@@ -247,6 +233,11 @@ class Simulator
            unsigned int address;
            int numInstnsLastMem;
         } line2Simulate;
+	struct cacheStatData
+	{
+	    int cycles;
+	    bool hit;
+	};
              
     public:
     /* CTOR */
@@ -296,20 +287,37 @@ class Simulator
         int storeHits = 0;
         int stores = 0;
         int mal = 0;
+	int hittime = 1;
+	int misstime = missPenalty;
 
         while( !inputFileStream.eof() )
 	{
+	    cacheStatData csd;
+
 	    readInTrace();
-	    accesses++;
 
             if( line2Simulate.accessType.compare("s") == 0 )
 	    {
-	        cycles += writeCost( line2Simulate.address );
+		accesses++;
+	        csd = writeCost( line2Simulate.address );
+		if( csd.hit )
+		{
+		    hits++;
+		    storeHits++;
+		}
 	        stores++;
+		cycles += csd.cycles;
 	    } else if( line2Simulate.accessType.compare("l") == 0 )
 	    {
-	        cycles += loadCost( line2Simulate.address );
+		accesses++;
+	        csd = loadCost( line2Simulate.address );
+		if( csd.hit )
+		{
+		    hits++;
+		    loadHits++;
+		}
 	        loads++;
+		cycles += csd.cycles;
 	    }
 
 	    cycles += line2Simulate.numInstnsLastMem;
@@ -322,60 +330,84 @@ class Simulator
             line2Simulate.numInstnsLastMem = 0;
     	}
 
-	outputFileStream << hits/accesses << std::endl
-			 << loadHits/loads << std::endl
-			 << storeHits/stores << std::endl
+	float missRate = 1.0f - (1.0f*hits/(float)accesses);
+	mal = hittime + missRate * misstime;
+
+	outputFileStream << hits*100.0f/(float)accesses << std::endl
+			 << loadHits*100.0f/(float)loads << std::endl
+			 << storeHits*100.0f/(float)stores << std::endl
 			 << cycles << std::endl
 			 << mal << std::endl;
     }
 
-    int loadCost( unsigned int address )
+    cacheStatData loadCost( unsigned int address )
     {
+	cacheStatData csd;
+
 	if( cache2Simulate.isLoaded( address ) )
 	{
 	    // we hit, so no load penalty
-	    return 1;
+	    csd.hit = true;
+	    csd.cycles = 1;
+	    return csd;
 	} else
 	{
 	    cache2Simulate.load( address );
 
+	    csd.hit = false;
+
 	    if( this->writeAllocate == 1 )
-		return missPenalty + 1;	// +1 for the write-back
+		csd.cycles = missPenalty + 1;	// +1 for the write-back
 	    else
-		return missPenalty;
+		csd.cycles = missPenalty;
+
+	    return csd;
 	}
     }
 
-    int writeCost( unsigned int address )
+    cacheStatData writeCost( unsigned int address )
     {
+	cacheStatData csd;
+
 	switch( this->writeAllocate )
 	{
 	    case 0: // No-write-allocate
 		if( cache2Simulate.isLoaded( address ) )
 		{
-		    // 1 for write in cache, 1 for write in memory
-		    return 2;
+		    csd.hit = true;
+		    csd.cycles = 2; // 1 for write in cache, 1 for write
+		    return csd;
 		} else
 		{
+		    csd.hit = false;
 		    // 1 for write in memory
-		    return 1;
+		    csd.cycles = 1;
+		    return csd;
 		}
 		break;
 	    case 1: // write-allocate
 		if( cache2Simulate.isLoaded( address ) )
 		{
+		    csd.hit = true;
 		    // write once now
-		    return 1;
+		    csd.cycles = 1;
+
+		    return csd;
 		} else
 		{
 		    cache2Simulate.load( address );
     
+		    csd.hit = false;
 		    // miss penalty plus 1 for the write
-		    return missPenalty + 1;
+		    csd.cycles = missPenalty + 1;
+
+		    return csd;
 		}
 		break;
 	    default:
-		return 1;
+		csd.hit = false;
+		csd.cycles = 1;
+		return csd;
 		break;
 	}
     }
