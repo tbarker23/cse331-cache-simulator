@@ -18,9 +18,10 @@
 #include<iostream>
 #include<fstream>
 #include<math.h>
-#include<cstdlib> // rand?
+#include<cstdlib> // rand
 #include<vector>
 
+// Describes a line in a cache
 struct CacheLine
 {
     int tag;    // The tag of this block
@@ -29,12 +30,14 @@ struct CacheLine
     int  block; // This contains the actual block.
 };
 
+// Describes a set of lines in a cache
 struct CacheSet
 {
     std::vector< CacheLine > blocks; // The blocks in this set
     int nextLineUsed; // The next line to replace during loads
 };
 
+// Describes an entire cache
 class Cache
 {
     /* Frames = lineSize / dataSize;
@@ -47,22 +50,21 @@ class Cache
      *     | tag            | set     |   offset |
      */
     protected:
-        int lineSize;
-        int associativity;
-        int dataSize;
-        int replacePolicy;
-        int frames;
-        int offsetBits;
-        int setBits;
-        int tagBits;
-        int numBlocks;
-        int numSets;
-	int offsetMask;
-	int setMask;
-	int tagMask;
-        std::vector< CacheSet > cache;
+        int lineSize;	    // The size of a block
+        int associativity;  // The associativity of the cache
+        int dataSize;	    // The total size of the cache
+        int replacePolicy;  // Replacement policy
+        int frames;	    // The number of lines in the cache
+        int offsetBits;	    // The number of offset bits in an address
+        int setBits;	    // The number of set bits in an address
+        int tagBits;	    // The number of tag bits in an address
+        int numSets;	    // The total number of sets
+	int offsetMask;	    // The mask of the offset
+	int setMask;	    // The mask of the set
+	int tagMask;	    // The mask of the tag
+        std::vector< CacheSet > cache; // The cache
         
-
+	// Holds information about an address
         struct addr
         {
            int tag;
@@ -71,18 +73,26 @@ class Cache
         } lineAddress; 
 
     public:
+	/* Default CTOR. Does nothing. */
         Cache()
         {
         }
+
+	/* CTOR */
         Cache( int linesize, int assoc, int datasize, int replacement )
         {
+	    /* Straight assignments */
             this->lineSize = linesize;
             this->associativity = assoc;
             this->dataSize = datasize;
             this->replacePolicy = replacement;
 
+	    /* Calculate cache properties */
             this->frames = this->dataSize / this->lineSize;
+
+	    /* Calculate the breakdown of the address bits */
             this->offsetBits = log2( this->lineSize );
+
             if( this->associativity > 0 )
             {
                 this->setBits = log2( this->frames ) / this->associativity;
@@ -90,9 +100,10 @@ class Cache
             {
                 this->setBits = log2( this->frames );
             }
+
             this->tagBits = 32 - setBits - offsetBits;
-            
-            this->numBlocks = this->dataSize / this->lineSize;
+
+	    /* Get the number of sets in the cache */          
             this->numSets = 
 		this->dataSize /(this->associativity * this->lineSize);
 
@@ -111,8 +122,8 @@ class Cache
 		tagMask = (tagMask << 1) + 1;
 	    tagMask <<= (setBits + offsetBits);
 
-            // Build the cache
-	    int blocksPerSet = numBlocks / numSets;
+            // Build the actual cache
+	    int blocksPerSet = frames / numSets;
             this->cache.resize( numSets );
             for( int i = 0; i < numSets; ++i )
             {
@@ -173,6 +184,7 @@ class Cache
 		    break;
 	    };
 
+	    /* Set up the block */
 	    cache[lineAddress.set].blocks[lineNo].tag = lineAddress.tag;
 	    cache[lineAddress.set].blocks[lineNo].flags |= 0x1;
 
@@ -187,10 +199,14 @@ class Cache
 	/* Checks if a memory address is already in memory */
 	bool isLoaded( unsigned int address )
 	{
+	    // Assume it's not loaded. This seems safe.
 	    bool loaded = false;
 
 	    splitAddress( address );
 
+	    // Look through the blocks in this set to see if the
+	    // tag matches the one of the address. If we find one,
+	    // it's loaded.
 	    int set = lineAddress.set;
 	    int blocks = cache[set].blocks.size();
 	    for( int i = 0; i < blocks; ++i )
@@ -212,27 +228,33 @@ class Cache
 	}
 };
 
+/* Our actual simulator! */
 class Simulator 
 {
     protected:
-        int lineSize;
-        int associativity;
-        int dataSize;
-        int replacePolicy;
-        int missPenalty;
-        int writeAllocate;
-        int numSets;
-        std::string traceFile;
-        std::string outputFile;
-        std::fstream outputFileStream;
-        std::fstream inputFileStream;
-        Cache cache2Simulate;
+	// Why do we store some of these here, again?
+        int lineSize;	    // block size
+        int associativity;  // associativity
+        int dataSize;	    // full cache size
+        int replacePolicy;  // replacement policy
+        int missPenalty;    // miss penalty in the cache
+        int writeAllocate;  // write-alloc or no-write-alloc
+        int numSets;	    // number of sets in the cache
+        std::string traceFile;	// The trace file
+        std::string outputFile;	// The output file
+        std::fstream outputFileStream;	// output stream
+        std::fstream inputFileStream;	// input stream
+        Cache cache2Simulate;		// The cache
+
+	// Line information from input file
         struct line
         {
            std::string accessType;
            unsigned int address;
            int numInstnsLastMem;
         } line2Simulate;
+
+	// Information for stats calculations
 	struct cacheStatData
 	{
 	    int cycles;
@@ -245,17 +267,28 @@ class Simulator
               int rpol, int mpenal, int walloc, std::string fname
               )
     {
+	// Cache information setup
         this->lineSize = lsize;
         this->associativity = asctvty;
+
+	// We multiply this by 2^10 because dsize is given in KB
         this->dataSize = dsize << 10;
+
+	// simulation information
         this->replacePolicy = rpol;
         this->missPenalty = mpenal;
         this->writeAllocate = walloc;
+
+	// Set up the input/output files
         this->traceFile = fname;
         this->outputFile = fname + ".out";
         outputFileStream.open(outputFile.c_str(), std::fstream::out);
         inputFileStream.open(traceFile.c_str(), std::fstream::in);
+
+	// Calculate set number
         this->numSets = this->dataSize /(this->associativity * this->lineSize);
+
+	// Create the cache
         this->cache2Simulate = Cache(this->lineSize, this->associativity, 
                                      this->dataSize, this->replacePolicy
                                      );
@@ -263,6 +296,7 @@ class Simulator
 
     ~Simulator()
     {
+	// Clean these up
         outputFileStream.close();
         inputFileStream.close();
     }
@@ -290,12 +324,16 @@ class Simulator
 	int hittime = 1;
 	int misstime = missPenalty;
 
+	// Read through the input file.  This performs one more loop
+	// than we really would like, but that last iteration should
+	// be pretty much irrelevant.
         while( !inputFileStream.eof() )
 	{
 	    cacheStatData csd;
 
 	    readInTrace();
 
+	    // Take different actions based on store (s) or load (l)
             if( line2Simulate.accessType.compare("s") == 0 )
 	    {
 		accesses++;
@@ -320,6 +358,7 @@ class Simulator
 		cycles += csd.cycles;
 	    }
 
+	    // Assume 1 cycle for all other instructions
 	    cycles += line2Simulate.numInstnsLastMem;
 
             /* Zero out the simulated line to prevent an 
@@ -330,9 +369,11 @@ class Simulator
             line2Simulate.numInstnsLastMem = 0;
     	}
 
+	// Once we're done with the input file
 	float missRate = 1.0f - (1.0f*hits/(float)accesses);
 	mal = hittime + missRate * misstime;
 
+	// Write our stats to the output file
 	outputFileStream << hits*100.0f/(float)accesses << std::endl
 			 << loadHits*100.0f/(float)loads << std::endl
 			 << storeHits*100.0f/(float)stores << std::endl
@@ -340,13 +381,14 @@ class Simulator
 			 << mal << std::endl;
     }
 
+    /* Calculates statistics for loading into the cache */
     cacheStatData loadCost( unsigned int address )
     {
 	cacheStatData csd;
 
 	if( cache2Simulate.isLoaded( address ) )
 	{
-	    // we hit, so no load penalty
+	    // we hit, so no load penalty is accrued
 	    csd.hit = true;
 	    csd.cycles = 1;
 	    return csd;
@@ -365,10 +407,12 @@ class Simulator
 	}
     }
 
+    /* Calculates statistics data for writes */
     cacheStatData writeCost( unsigned int address )
     {
 	cacheStatData csd;
 
+	// We take different actions based on the write allocation scheme
 	switch( this->writeAllocate )
 	{
 	    case 0: // No-write-allocate
@@ -404,7 +448,7 @@ class Simulator
 		    return csd;
 		}
 		break;
-	    default:
+	    default: // Assume a weird case here?
 		csd.hit = false;
 		csd.cycles = 1;
 		return csd;

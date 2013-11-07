@@ -20,6 +20,7 @@
 
 using namespace std;
 
+/* Calculates if a number is a power of 2. */
 bool isPowOf2( unsigned int i );
 
 int main( int argc, char** argv )
@@ -32,7 +33,7 @@ int main( int argc, char** argv )
         return -1;
     }
 
-    /* Ensure the configuration is correct here */
+    /* Ensure the configuration is correct */
     fstream config( argv[1], fstream::in );
 
     int configs[6];
