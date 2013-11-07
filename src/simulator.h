@@ -81,7 +81,7 @@ class Cache
             this->dataSize = datasize;
             this->replacePolicy = replacement;
 
-            this->frames = this->lineSize / this->dataSize;
+            this->frames = this->dataSize / this->lineSize;
             this->offsetBits = log2( this->lineSize );
             if( this->associativity > 0 )
             {
@@ -95,6 +95,20 @@ class Cache
             this->numBlocks = this->dataSize / this->lineSize;
             this->numSets = 
 		this->dataSize /(this->associativity * this->lineSize);
+
+	    std::cout<< "Cache configuration:\n"
+		     << "\tLine Size:\t" << lineSize << std::endl
+		     << "\tCache Size:\t" << dataSize << std::endl
+		     << "\tReplace:\t" << replacePolicy << std::endl
+		     << "\tAssoc:\t\t" << associativity << std::endl
+		     << "\tLines:\t\t" << frames << std::endl
+		     << std::endl;
+
+	    std::cout<< "Address Breakdown:\n"
+		     << "\tTag Bits:\t" << tagBits << std::endl
+		     << "\tSet Bits:\t" << setBits << std::endl
+		     << "\tOffset Bits:\t" << offsetBits << std::endl
+		     << std::endl;
 
 	    // Set up the masks
 	    offsetMask = 0;
@@ -242,7 +256,7 @@ class Simulator
     {
         this->lineSize = lsize;
         this->associativity = asctvty;
-        this->dataSize = dsize;
+        this->dataSize = dsize << 10;
         this->replacePolicy = rpol;
         this->missPenalty = mpenal;
         this->writeAllocate = walloc;
@@ -319,17 +333,50 @@ class Simulator
     {
 	if( cache2Simulate.isLoaded( address ) )
 	{
+	    // we hit, so no load penalty
 	    return 1;
 	} else
 	{
 	    cache2Simulate.load( address );
 
-	    return missPenalty;
+	    if( this->writeAllocate == 1 )
+		return missPenalty + 1;	// +1 for the write-back
+	    else
+		return missPenalty;
 	}
     }
 
     int writeCost( unsigned int address )
     {
-	return 1;
+	switch( this->writeAllocate )
+	{
+	    case 0: // No-write-allocate
+		if( cache2Simulate.isLoaded( address ) )
+		{
+		    // 1 for write in cache, 1 for write in memory
+		    return 2;
+		} else
+		{
+		    // 1 for write in memory
+		    return 1;
+		}
+		break;
+	    case 1: // write-allocate
+		if( cache2Simulate.isLoaded( address ) )
+		{
+		    // write once now
+		    return 1;
+		} else
+		{
+		    cache2Simulate.load( address );
+    
+		    // miss penalty plus 1 for the write
+		    return missPenalty + 1;
+		}
+		break;
+	    default:
+		return 1;
+		break;
+	}
     }
 };
