@@ -145,7 +145,7 @@ class Cache
         /* Empty and clear out the values in the cache */
         void emptyCache()
         {
-            int blocksPerSet = this->numBlocks/this->numSets;
+            int blocksPerSet = this->frames/this->numSets;
             for( int i = 0; i < this->numSets; ++i )
             {
                 for( int j = 0; j < blocksPerSet; ++j )
